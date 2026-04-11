@@ -186,7 +186,7 @@ router.post("/events", async (req, res) => {
 
     // Fire-and-forget Zapier webhook — does not block the response
     try {
-      await fetch("https://hooks.zapier.com/hooks/catch/19852789/u7qdlc1/", {
+      await fetch("https://hooks.zapier.com/hooks/catch/19852789/u7qmq2g/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
