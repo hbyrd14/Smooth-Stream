@@ -1,0 +1,170 @@
+Build a production-style MVP web app called “SmoothStream Event System” for managing virtual and hybrid event operations.
+
+Tech stack:
+- Next.js with App Router
+- Supabase for Postgres database and authentication
+- Tailwind CSS
+- Clean responsive UI
+- Simple component structure
+- Seed data for demo use
+
+Main goal:
+Create an event intake and operations dashboard app where a public form submission creates an internal event record and automatically generates a standard event checklist.
+
+User roles:
+1. Admin
+2. Internal team member
+3. Public requester (no login required for intake form)
+
+Required features:
+
+1. Public Event Intake Form
+Create a public page with a form that collects:
+- organizer name
+- company / organization
+- email
+- phone
+- event title
+- event type
+- event start datetime
+- event end datetime
+- time zone
+- streaming platform
+- speaker count
+- speaker names / roles
+- assets needed
+- captions required
+- translation required
+- engagement features
+- special requirements
+- final assets due date
+- priority
+- wants full setup yes/no
+
+On submit:
+- create organization if it does not exist
+- create event record
+- create default checklist tasks for the event
+- create activity log entry
+- show confirmation page
+
+2. Internal Dashboard
+Create a protected dashboard page for logged-in internal users showing:
+- total events
+- events this week
+- high priority events
+- blocked events
+- upcoming deadlines
+
+Add a table of events with:
+- title
+- organization
+- event date
+- platform
+- owner
+- priority
+- status
+
+Add filters:
+- all
+- this week
+- high priority
+- awaiting assets
+- ready for tech check
+- ready for live
+
+3. Event Detail Page
+Create a detail page for each event with sections:
+- overview
+- organizer info
+- schedule
+- speakers
+- assets
+- technical requirements
+- checklist
+- notes
+- activity log
+
+Allow internal users to:
+- assign owner
+- update status
+- edit event details
+- add internal notes
+- mark tasks complete
+- add or edit asset links
+- see deadlines and warnings
+
+4. Checklist System
+When an event is created, generate these default tasks:
+- intake received
+- owner assigned
+- client confirmation sent
+- assets requested
+- assets received
+- platform configured
+- speaker tech check scheduled
+- speaker tech check completed
+- captions configured
+- translations configured
+- dry run completed
+- go-live ready
+- recording delivered
+- post-event review completed
+
+Each task should have:
+- title
+- status
+- due date
+- assigned user
+- completed timestamp
+- sort order
+
+5. Admin Settings
+Create a simple settings page for:
+- event types
+- platform options
+- default checklist template
+- team members
+- notification email
+
+6. AI Helper Placeholders
+On the event detail page add buttons for:
+- Generate Run of Show Draft
+- Generate Client Reminder Email
+
+For now, implement these as placeholder server functions that use event data and return editable draft text.
+
+Database schema:
+Create tables for:
+- organizations
+- events
+- event_tasks
+- event_notes
+- event_assets
+- profiles
+- activity_log
+
+Important constraints:
+- Keep authentication simple for internal users
+- Public intake form must not require login
+- Focus on a clean MVP, not enterprise complexity
+- Use sensible validation
+- Use modular code
+- Include setup instructions in README
+- Include SQL schema and seed data
+- Include a polished demo home page
+
+UI style:
+Professional, modern, clean, operations-focused.
+Think internal SaaS dashboard for event teams.
+Use badges for event status and priority.
+Use cards for summary metrics.
+Use tables for event lists.
+Use a simple form layout with sections.
+
+Deliverables:
+- full app scaffold
+- database schema
+- seed script
+- README with local setup steps
+- sample demo data

@@ -1,22 +1,41 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SmoothStream Event System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: events
+    description: Event management
+  - name: organizations
+    description: Organization management
+  - name: tasks
+    description: Event checklist tasks
+  - name: notes
+    description: Event notes
+  - name: assets
+    description: Event assets
+  - name: activity
+    description: Activity log
+  - name: profiles
+    description: User profiles / team members
+  - name: settings
+    description: Admin settings
+  - name: ai
+    description: AI helper endpoints
+  - name: dashboard
+    description: Dashboard summary
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +43,480 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Dashboard ────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary metrics
+      responses:
+        "200":
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  # ─── Organizations ────────────────────────────────────────────
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: List all organizations
+      responses:
+        "200":
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Create organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  # ─── Events ───────────────────────────────────────────────────
+  /events:
+    get:
+      operationId: listEvents
+      tags: [events]
+      summary: List events with optional filters
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum: [all, this_week, high_priority, awaiting_assets, ready_for_tech_check, ready_for_live]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventSummary"
+    post:
+      operationId: createEvent
+      tags: [events]
+      summary: Create event (public intake)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  /events/{id}:
+    get:
+      operationId: getEvent
+      tags: [events]
+      summary: Get event details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateEvent
+      tags: [events]
+      summary: Update event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  # ─── Tasks ────────────────────────────────────────────────────
+  /events/{id}/tasks:
+    get:
+      operationId: listEventTasks
+      tags: [tasks]
+      summary: List tasks for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventTask"
+
+  /events/{id}/tasks/{taskId}:
+    patch:
+      operationId: updateEventTask
+      tags: [tasks]
+      summary: Update a task (mark complete, set due date, assign)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventTask"
+
+  # ─── Notes ────────────────────────────────────────────────────
+  /events/{id}/notes:
+    get:
+      operationId: listEventNotes
+      tags: [notes]
+      summary: List notes for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventNote"
+    post:
+      operationId: createEventNote
+      tags: [notes]
+      summary: Add a note to an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventNoteBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventNote"
+
+  # ─── Assets ───────────────────────────────────────────────────
+  /events/{id}/assets:
+    get:
+      operationId: listEventAssets
+      tags: [assets]
+      summary: List assets for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventAsset"
+    post:
+      operationId: createEventAsset
+      tags: [assets]
+      summary: Add an asset to an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventAssetBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventAsset"
+
+  /events/{id}/assets/{assetId}:
+    patch:
+      operationId: updateEventAsset
+      tags: [assets]
+      summary: Update an asset
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventAssetBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventAsset"
+
+  # ─── Activity Log ─────────────────────────────────────────────
+  /events/{id}/activity:
+    get:
+      operationId: listEventActivity
+      tags: [activity]
+      summary: List activity log for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLog"
+
+  # ─── Profiles ─────────────────────────────────────────────────
+  /profiles:
+    get:
+      operationId: listProfiles
+      tags: [profiles]
+      summary: List all team member profiles
+      responses:
+        "200":
+          description: List of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Profile"
+    post:
+      operationId: createProfile
+      tags: [profiles]
+      summary: Create a team member profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProfileBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /profiles/{id}:
+    patch:
+      operationId: updateProfile
+      tags: [profiles]
+      summary: Update a profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    delete:
+      operationId: deleteProfile
+      tags: [profiles]
+      summary: Delete a team member profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── Settings ─────────────────────────────────────────────────
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get admin settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update admin settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  # ─── AI Helpers ───────────────────────────────────────────────
+  /events/{id}/ai/run-of-show:
+    post:
+      operationId: generateRunOfShow
+      tags: [ai]
+      summary: Generate a run-of-show draft for an event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Draft text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIDraftResponse"
+
+  /events/{id}/ai/client-reminder:
+    post:
+      operationId: generateClientReminder
+      tags: [ai]
+      summary: Generate a client reminder email draft
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Draft text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIDraftResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +527,598 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalEvents:
+          type: integer
+        eventsThisWeek:
+          type: integer
+        highPriorityEvents:
+          type: integer
+        blockedEvents:
+          type: integer
+        upcomingDeadlines:
+          type: integer
+      required:
+        - totalEvents
+        - eventsThisWeek
+        - highPriorityEvents
+        - blockedEvents
+        - upcomingDeadlines
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateOrganizationBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    EventSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        organizationName:
+          type: string
+        eventStart:
+          type: string
+          format: date-time
+        platform:
+          type: string
+        ownerName:
+          type: string
+          nullable: true
+        priority:
+          type: string
+        status:
+          type: string
+        finalAssetsDueDate:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - title
+        - organizationName
+        - eventStart
+        - platform
+        - priority
+        - status
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        organizationId:
+          type: integer
+        organizationName:
+          type: string
+        organizerName:
+          type: string
+        organizerEmail:
+          type: string
+        organizerPhone:
+          type: string
+          nullable: true
+        eventType:
+          type: string
+        eventStart:
+          type: string
+          format: date-time
+        eventEnd:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        platform:
+          type: string
+        speakerCount:
+          type: integer
+        speakerDetails:
+          type: string
+          nullable: true
+        assetsNeeded:
+          type: string
+          nullable: true
+        captionsRequired:
+          type: boolean
+        translationRequired:
+          type: boolean
+        engagementFeatures:
+          type: string
+          nullable: true
+        specialRequirements:
+          type: string
+          nullable: true
+        finalAssetsDueDate:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: string
+        wantsFullSetup:
+          type: boolean
+        status:
+          type: string
+        ownerId:
+          type: integer
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - organizationId
+        - organizationName
+        - organizerName
+        - organizerEmail
+        - eventType
+        - eventStart
+        - eventEnd
+        - timezone
+        - platform
+        - speakerCount
+        - captionsRequired
+        - translationRequired
+        - wantsFullSetup
+        - priority
+        - status
+        - createdAt
+
+    EventDetail:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          properties:
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventTask"
+            notes:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventNote"
+            assets:
+              type: array
+              items:
+                $ref: "#/components/schemas/EventAsset"
+            activityLog:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActivityLog"
+          required:
+            - tasks
+            - notes
+            - assets
+            - activityLog
+
+    CreateEventBody:
+      type: object
+      properties:
+        organizerName:
+          type: string
+        organizationName:
+          type: string
+        organizerEmail:
+          type: string
+        organizerPhone:
+          type: string
+          nullable: true
+        title:
+          type: string
+        eventType:
+          type: string
+        eventStart:
+          type: string
+          format: date-time
+        eventEnd:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        platform:
+          type: string
+        speakerCount:
+          type: integer
+        speakerDetails:
+          type: string
+          nullable: true
+        assetsNeeded:
+          type: string
+          nullable: true
+        captionsRequired:
+          type: boolean
+        translationRequired:
+          type: boolean
+        engagementFeatures:
+          type: string
+          nullable: true
+        specialRequirements:
+          type: string
+          nullable: true
+        finalAssetsDueDate:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: string
+        wantsFullSetup:
+          type: boolean
+      required:
+        - organizerName
+        - organizationName
+        - organizerEmail
+        - title
+        - eventType
+        - eventStart
+        - eventEnd
+        - timezone
+        - platform
+        - speakerCount
+        - captionsRequired
+        - translationRequired
+        - wantsFullSetup
+        - priority
+
+    UpdateEventBody:
+      type: object
+      properties:
+        title:
+          type: string
+        eventType:
+          type: string
+        eventStart:
+          type: string
+          format: date-time
+        eventEnd:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        platform:
+          type: string
+        speakerCount:
+          type: integer
+        speakerDetails:
+          type: string
+          nullable: true
+        assetsNeeded:
+          type: string
+          nullable: true
+        captionsRequired:
+          type: boolean
+        translationRequired:
+          type: boolean
+        engagementFeatures:
+          type: string
+          nullable: true
+        specialRequirements:
+          type: string
+          nullable: true
+        finalAssetsDueDate:
+          type: string
+          format: date-time
+          nullable: true
+        priority:
+          type: string
+        wantsFullSetup:
+          type: boolean
+        status:
+          type: string
+        ownerId:
+          type: integer
+          nullable: true
+
+    EventTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        assignedUserId:
+          type: integer
+          nullable: true
+        assignedUserName:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - id
+        - eventId
+        - title
+        - status
+        - sortOrder
+
+    UpdateEventTaskBody:
+      type: object
+      properties:
+        status:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        assignedUserId:
+          type: integer
+          nullable: true
+
+    EventNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        content:
+          type: string
+        authorName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - content
+        - authorName
+        - createdAt
+
+    CreateEventNoteBody:
+      type: object
+      properties:
+        content:
+          type: string
+        authorName:
+          type: string
+      required:
+        - content
+        - authorName
+
+    EventAsset:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        name:
+          type: string
+        assetType:
+          type: string
+        url:
+          type: string
+          nullable: true
+        status:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - name
+        - assetType
+        - status
+        - createdAt
+
+    CreateEventAssetBody:
+      type: object
+      properties:
+        name:
+          type: string
+        assetType:
+          type: string
+        url:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - assetType
+
+    UpdateEventAssetBody:
+      type: object
+      properties:
+        name:
+          type: string
+        assetType:
+          type: string
+        url:
+          type: string
+          nullable: true
+        status:
+          type: string
+        notes:
+          type: string
+          nullable: true
+
+    ActivityLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        action:
+          type: string
+        description:
+          type: string
+        actorName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - action
+        - description
+        - createdAt
+
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - role
+        - createdAt
+
+    CreateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - name
+        - email
+        - role
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+
+    Settings:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventTypes:
+          type: array
+          items:
+            type: string
+        platformOptions:
+          type: array
+          items:
+            type: string
+        defaultChecklistTemplate:
+          type: array
+          items:
+            type: string
+        notificationEmail:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventTypes
+        - platformOptions
+        - defaultChecklistTemplate
+        - updatedAt
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        eventTypes:
+          type: array
+          items:
+            type: string
+        platformOptions:
+          type: array
+          items:
+            type: string
+        defaultChecklistTemplate:
+          type: array
+          items:
+            type: string
+        notificationEmail:
+          type: string
+          nullable: true
+
+    AIDraftResponse:
+      type: object
+      properties:
+        draft:
+          type: string
+        type:
+          type: string
+      required:
+        - draft
+        - type
