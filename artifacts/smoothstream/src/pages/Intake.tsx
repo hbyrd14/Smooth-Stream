@@ -51,13 +51,14 @@ export default function Intake() {
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!form.organizerName) e.organizerName = "Required";
-    if (!form.organizationName) e.organizationName = "Required";
-    if (!form.organizerEmail || !form.organizerEmail.includes("@")) e.organizerEmail = "Valid email required";
-    if (!form.title) e.title = "Required";
+    if (!form.organizerName.trim()) e.organizerName = "Required";
+    if (!form.organizationName.trim()) e.organizationName = "Required";
+    if (!form.organizerEmail.trim() || !form.organizerEmail.includes("@")) e.organizerEmail = "Valid email required";
+    if (!form.title.trim()) e.title = "Required";
     if (!form.eventType) e.eventType = "Required";
     if (!form.eventStart) e.eventStart = "Required";
     if (!form.eventEnd) e.eventEnd = "Required";
+    if (!form.timezone) e.timezone = "Required";
     if (!form.platform) e.platform = "Required";
     if (form.speakerCount < 1) e.speakerCount = "Must be at least 1";
     return e;
@@ -74,26 +75,28 @@ export default function Intake() {
 
     try {
       await createEvent.mutateAsync({
-        organizerName: form.organizerName,
-        organizationName: form.organizationName,
-        organizerEmail: form.organizerEmail,
-        organizerPhone: form.organizerPhone || undefined,
-        title: form.title,
-        eventType: form.eventType,
-        eventStart: new Date(form.eventStart).toISOString(),
-        eventEnd: new Date(form.eventEnd).toISOString(),
-        timezone: form.timezone,
-        platform: form.platform,
-        speakerCount: form.speakerCount,
-        speakerDetails: form.speakerDetails || undefined,
-        assetsNeeded: form.assetsNeeded || undefined,
-        captionsRequired: form.captionsRequired,
-        translationRequired: form.translationRequired,
-        engagementFeatures: form.engagementFeatures || undefined,
-        specialRequirements: form.specialRequirements || undefined,
-        finalAssetsDueDate: form.finalAssetsDueDate ? new Date(form.finalAssetsDueDate).toISOString() : undefined,
-        priority: form.priority,
-        wantsFullSetup: form.wantsFullSetup,
+        data: {
+          organizerName: form.organizerName.trim(),
+          organizationName: form.organizationName.trim(),
+          organizerEmail: form.organizerEmail.trim(),
+          organizerPhone: form.organizerPhone.trim() || null,
+          title: form.title.trim(),
+          eventType: form.eventType,
+          eventStart: new Date(form.eventStart),
+          eventEnd: new Date(form.eventEnd),
+          timezone: form.timezone,
+          platform: form.platform,
+          speakerCount: form.speakerCount,
+          speakerDetails: form.speakerDetails.trim() || null,
+          assetsNeeded: form.assetsNeeded.trim() || null,
+          captionsRequired: form.captionsRequired,
+          translationRequired: form.translationRequired,
+          engagementFeatures: form.engagementFeatures.trim() || null,
+          specialRequirements: form.specialRequirements.trim() || null,
+          finalAssetsDueDate: form.finalAssetsDueDate ? new Date(form.finalAssetsDueDate) : null,
+          priority: form.priority,
+          wantsFullSetup: form.wantsFullSetup,
+        },
       });
       setLocation("/intake/confirmation");
     } catch (err) {
