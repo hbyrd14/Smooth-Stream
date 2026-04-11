@@ -184,6 +184,29 @@ router.post("/events", async (req, res) => {
       actorName: data.organizerName,
     });
 
+    // Fire-and-forget Zapier webhook — does not block the response
+    try {
+      await fetch("https://hooks.zapier.com/hooks/catch/19852789/u7qdlc1/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          eventName: event.title,
+          organization: org.name,
+          eventDate: event.eventStart.toISOString(),
+          platform: event.platform,
+          status: event.status,
+          priority: event.priority,
+          organizer: event.organizerName,
+          email: event.organizerEmail,
+          speakerCount: event.speakerCount,
+          notes: event.specialRequirements ?? null,
+        }),
+      });
+    } catch (webhookErr) {
+      console.error("Zapier webhook failed:", webhookErr);
+    }
+
     res.status(201).json(formatEvent(event, org.name, null));
   } catch (err) {
     req.log.error({ err }, "Failed to create event");
