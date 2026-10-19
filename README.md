@@ -30,55 +30,86 @@ A production-style MVP web application for managing virtual and hybrid event ope
 | `activity_log` | Audit trail of all changes |
 | `settings` | Admin-configurable options |
 
-## Local Setup
+## Self-Hosting
 
-### Prerequisites
+SmoothStream runs as a single Node.js process that serves both the API (`/api`) and the built React frontend, backed by PostgreSQL. No platform-specific services are required.
 
-- Node.js 20+
-- pnpm 9+
-- PostgreSQL database
+### Option A — Docker Compose (recommended)
 
-### 1. Install dependencies
+Requires Docker with the Compose plugin.
+
+```bash
+cp .env.example .env        # set POSTGRES_PASSWORD at minimum
+docker compose up -d --build
+```
+
+This starts Postgres 16, applies the database schema, then starts the app on `http://127.0.0.1:8080`. Data persists in the `pgdata` volume. Re-running `docker compose up -d --build` after pulling changes rebuilds the app and applies any schema changes.
+
+By default the app port is bound to `127.0.0.1` so it can sit behind a reverse proxy on the same host. Set `APP_BIND=0.0.0.0` in `.env` to expose it directly on your network.
+
+### Option B — Bare metal / VM
+
+Prerequisites: Node.js 22.9+, pnpm 10 (`corepack enable`), PostgreSQL 14+.
 
 ```bash
 pnpm install
+cp .env.example .env        # set DATABASE_URL
+pnpm db:push                # create/update tables
+pnpm build:app              # build frontend + API bundle
+pnpm start                  # serves everything on :8080
 ```
 
-### 2. Set up environment variables
+Run `pnpm start` under systemd, pm2, or similar to keep it up. The server shuts down gracefully on `SIGTERM`.
 
-Create a `.env` file or set these environment variables:
+### Reverse proxy and HTTPS
+
+Put any reverse proxy in front of port 8080 and terminate TLS there. Example Caddyfile:
 
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/smoothstream
+smoothstream.example.com {
+    reverse_proxy 127.0.0.1:8080
+}
 ```
 
-### 3. Push database schema
+The same works with nginx, Traefik, or a Cloudflare Tunnel pointed at `http://localhost:8080`.
+
+### Configuration
+
+All settings are environment variables; see `.env.example` for the full list.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DATABASE_URL` | — (required) | PostgreSQL connection string |
+| `PORT` / `HOST` | `8080` / `0.0.0.0` | API server listen address |
+| `STATIC_DIR` | `artifacts/smoothstream/dist/public` | Built frontend to serve |
+| `CORS_ORIGIN` | unset (same-origin only) | Allowlist if the UI is hosted on another origin |
+| `TRUST_PROXY` | private/loopback ranges | Proxies trusted for `X-Forwarded-*` |
+| `LOG_LEVEL` | `info` | Pino log level |
+
+### Development
 
 ```bash
-pnpm --filter @workspace/db run push
+pnpm install
+cp .env.example .env        # point DATABASE_URL at a dev database
+pnpm db:push
+pnpm dev                    # API on :8080, Vite on :5173 (proxies /api to the API)
 ```
 
-### 4. Run codegen (generates API client from OpenAPI spec)
+Open `http://localhost:5173`. To reach the dev server from another device, add its hostname to `ALLOWED_HOSTS`.
+
+After changing `lib/api-spec/openapi.yaml`, regenerate the client and schemas:
 
 ```bash
 pnpm run --filter @workspace/api-spec codegen
 ```
 
-### 5. Seed demo data
+### Health check
 
-Run the SQL seed script from `scripts/seed.sql` against your database, or use the API to create sample events via the intake form.
+`GET /api/healthz` returns `{"status":"ok"}`; the Docker image uses it for its built-in `HEALTHCHECK`.
 
-### 6. Start development servers
+### Security note
 
-In separate terminals:
-
-```bash
-# API server (Express)
-pnpm --filter @workspace/api-server run dev
-
-# Frontend (React + Vite)
-pnpm --filter @workspace/smoothstream run dev
-```
+Authentication is currently demo-only: the login page navigates to the dashboard without verifying anyone, and the internal API routes are unauthenticated. Until real auth is added, do not expose a self-hosted instance to the public internet. Keep it on a private network or VPN, or put it behind an authenticating proxy (e.g. Cloudflare Access, Authelia, oauth2-proxy).
 
 ## User Roles
 

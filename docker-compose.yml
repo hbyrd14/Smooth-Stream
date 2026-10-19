@@ -1,0 +1,56 @@
+# SmoothStream self-hosted stack: Postgres + one-shot schema push + app.
+#
+#   cp .env.example .env    # set POSTGRES_PASSWORD at minimum
+#   docker compose up -d --build
+#
+# App: http://localhost:${APP_PORT:-8080}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smoothstream}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-smoothstream}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Applies the Drizzle schema, then exits. Runs on every `up`, and is a
+  # no-op when the schema is already current.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-smoothstream}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smoothstream}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-smoothstream}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smoothstream}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
+    ports:
+      # Bind to 127.0.0.1 by default so only a local reverse proxy can reach
+      # it. Set APP_BIND=0.0.0.0 to expose it on the network directly.
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
