@@ -2,50 +2,35 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
+// Dev server port (the API server runs separately, see API_URL below).
+const port = Number(process.env.PORT ?? 5173);
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error(`Invalid PORT value: "${process.env.PORT}"`);
 }
 
-const basePath = process.env.BASE_PATH;
+// Public path the app is served under. Use "/" unless you mount SmoothStream
+// under a sub-path behind a reverse proxy (e.g. "/smoothstream/").
+const basePath = process.env.BASE_PATH ?? "/";
 
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+// Where the dev server forwards /api requests. In production the API server
+// serves the built frontend itself, so no proxy is involved.
+const apiUrl = process.env.API_URL ?? "http://localhost:8080";
+
+// Extra hostnames the dev/preview server will answer to (comma-separated),
+// e.g. "smoothstream.lan,stream.example.com". Localhost is always allowed.
+const allowedHosts = (process.env.ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((h) => h.trim())
+  .filter(Boolean);
+
+const apiProxy = {
+  "/api": { target: apiUrl, changeOrigin: true },
+};
 
 export default defineConfig({
   base: basePath,
-  plugins: [
-    react(),
-    tailwindcss(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
@@ -61,7 +46,8 @@ export default defineConfig({
   server: {
     port,
     host: "0.0.0.0",
-    allowedHosts: true,
+    allowedHosts,
+    proxy: apiProxy,
     fs: {
       strict: true,
       deny: ["**/.*"],
@@ -70,6 +56,7 @@ export default defineConfig({
   preview: {
     port,
     host: "0.0.0.0",
-    allowedHosts: true,
+    allowedHosts,
+    proxy: apiProxy,
   },
 });
